@@ -30,6 +30,7 @@ public class ShutdownServlet extends DefaultServlet {
 	
 	private static final long serialVersionUID = 1L;
 	private static Logger log = LogManager.getLogger(ShutdownServlet.class);
+	public static final String path = "/shutdown";
 
 	@Override
 	protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -40,7 +41,7 @@ public class ShutdownServlet extends DefaultServlet {
 		writer.write("Shutdown server...");
 		writer.close();
 		try {
-			Main.server.stop();
+			Main.stop();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

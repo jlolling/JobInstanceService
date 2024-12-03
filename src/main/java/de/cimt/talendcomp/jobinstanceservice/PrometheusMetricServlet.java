@@ -35,6 +35,7 @@ public class PrometheusMetricServlet extends DefaultServlet {
 
 	private static final long serialVersionUID = 1L;
 	private CollectorRegistry registry;
+	public static final String path = "/metrics";
 
 	/**
 	 * Construct a MetricsServlet for the default registry.

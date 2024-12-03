@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class PingServlet extends DefaultServlet {
 
 	private static final long serialVersionUID = 1L;
+	public static final String path = "/ping";
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {

@@ -32,11 +32,10 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-
 import io.prometheus.client.hotspot.DefaultExports;
 
 public class Main {
-	
+
 	private static Logger log = LogManager.getLogger(Main.class);
 	public static Server server = null;
 	private static int port = 10000;
@@ -44,10 +43,14 @@ public class Main {
 	private static String propertiesFileDir = null;
 	private static String buckets = null;
 	private static String version = null;
-	private static boolean forceChunking = true;
 	public static final String groupId = "de.cimt.talendcomp";
 	public static final String artifactId = "job-instance-service";
 
+	/**
+	 * Start sequence for the service
+	 * 
+	 * @throws Exception
+	 */
 	public static void start() throws Exception {
 		if (port < 1) {
 			throw new IllegalArgumentException("Port must be greater 0");
@@ -62,23 +65,26 @@ public class Main {
 		server.setHandler(context);
 		PrometheusMetricsFilter pm = new PrometheusMetricsFilter();
 		pm.setTimebucketsStr(buckets);
-		context.addFilter(new FilterHolder(pm), "/*", null);
+		context.addFilter(new FilterHolder(pm), PrometheusMetricsFilter.path, null);
 		log.info("Add filter: PrometheusMetricsFilter at pattern: /*");
-		context.addServlet(new ServletHolder(new ShutdownServlet()), "/shutdown");
-		log.info("Add servlet: ShutdownServlet at path: /shutdown");
-		context.addServlet(new ServletHolder(new PingServlet()), "/ping");
-		log.info("Add servlet: PingServlet at path: /ping");
-		context.addServlet(new ServletHolder(new PrometheusMetricServlet()), "/metrics");
+		context.addServlet(new ServletHolder(new ShutdownServlet()), ShutdownServlet.path);
+		log.info("Add servlet: ShutdownServlet at path: " + ShutdownServlet.path);
+		context.addServlet(new ServletHolder(new PingServlet()), PingServlet.path);
+		log.info("Add servlet: PingServlet at path: " + PingServlet.path);
+		context.addServlet(new ServletHolder(new PrometheusMetricServlet()), PrometheusMetricServlet.path);
 		DefaultExports.initialize();
-		log.info("Add servlet: PrometheusMetricServlet at path: /metrics");
+		log.info("Add servlet: PrometheusMetricServlet at path: " + PrometheusMetricServlet.path);
 		// Add JobInstanceServlet here
-		
+
 		server.setStopAtShutdown(true);
 		// Start the webserver.
 		log.info("Start server");
 		server.start();
 	}
-	
+
+	/**
+	 * Stop the service
+	 */
 	public static void stop() {
 		if (server != null) {
 			try {
@@ -91,41 +97,40 @@ public class Main {
 	}
 
 	public static void main(String[] args) throws Exception {
-    	Options options = new Options();
-    	options.addOption("p", "port", true, "Port of the server");
-    	options.addOption("v", "verbose", false, "Print statements to console");
-    	options.addOption("h", "help", false, "Print help to console, do nothing else.");
-    	options.addOption("b", "buckets", true, "Buckets for measure and count the request durations");
-    	options.addOption("c", "chunking", false, "Force chunking (true | false, default=true)");
-    	options.addOption("d", "propertiesFile", false, "Properties file for connection settings");
-    	CommandLineParser parser = new DefaultParser();
-    	CommandLine cmd = parser.parse( options, args);
-    	String portStr = cmd.getOptionValue('p', String.valueOf(port));
-    	verbose = cmd.hasOption('v');
-    	boolean help = cmd.hasOption('h');
+		Options options = new Options();
+		options.addOption("b", "buckets", true, "Buckets for measure and count the request durations");
+		options.addOption("f", "propertiesFile", false, "Properties file for connection settings");
+		options.addOption("h", "help", false, "Print help to console, do nothing else.");
+		options.addOption("p", "port", true, "Port of the server");
+		options.addOption("v", "verbose", false, "Print statements to console");
+		CommandLineParser parser = new DefaultParser();
+		CommandLine cmd = parser.parse(options, args);
+		String portStr = cmd.getOptionValue('p', String.valueOf(port));
+		verbose = cmd.hasOption('v');
+		boolean help = cmd.hasOption('h');
 		version = readVersionNumber();
-    	if (help) {
+		if (help) {
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.setWidth(200);
-			formatter.printHelp("java -Dlog4j.configurationFile=log4j2.xml -jar "+ artifactId + "-" + version + ".jar", options);
+			formatter.printHelp("java -Dlog4j.configurationFile=log4j2.xml -jar " + artifactId + "-" + version + ".jar",
+			        options);
 			System.exit(0);
-    	}
-    	checkLog4jConfigFile();
-    	try {
-    		port = Integer.valueOf(portStr);
-    	} catch (Exception e) {
+		}
+		checkLog4jConfigFile();
+		try {
+			port = Integer.valueOf(portStr);
+		} catch (Exception e) {
 			log.error("Cannot parse port number: " + portStr);
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.setWidth(200);
-			formatter.printHelp("java -Dlog4j.configurationFile=log4j2.xml -jar " + artifactId + "-" + version + ".jar", options);
+			formatter.printHelp("java -Dlog4j.configurationFile=log4j2.xml -jar " + artifactId + "-" + version + ".jar",
+			        options);
 			System.exit(4);
-    	}
-    	propertiesFileDir = cmd.getOptionValue('d');
-    	buckets = cmd.getOptionValue('b');
-    	String forceChunkingStr = cmd.getOptionValue('c');
-    	forceChunking = (forceChunkingStr != null && "true".equals(forceChunkingStr));
-    	log.info("Configuring Job Instance Service (version " + version + ") at port: " + port);
-    	start();
+		}
+		propertiesFileDir = cmd.getOptionValue('f');
+		buckets = cmd.getOptionValue('b');
+		log.info("Configuring Job Instance Service (version " + version + ") at port: " + port);
+		start();
 	}
 
 	public static String readVersionNumber() {
@@ -145,11 +150,12 @@ public class Main {
 		}
 		return null;
 	}
-	
+
 	private static void checkLog4jConfigFile() {
-		String filename = System.getProperty("log4j2.configurationFile");
+		String filename = System.getProperty("log4j2.configurationFile", "log4j2.xml");
 		if (filename == null || filename.trim().isEmpty()) {
-			System.err.println("WARNING: No log4j configuration file given per environment variable log4j2.configurationFile. Log will only appears in console output and logger treshold is ERROR");
+			System.err.println(
+			        "WARNING: No log4j configuration file given per environment variable log4j2.configurationFile. Log will only appears in console output and logger treshold is ERROR");
 		} else {
 			File f = new File(filename);
 			if (f.exists() == false) {

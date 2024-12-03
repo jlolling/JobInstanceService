@@ -17,6 +17,9 @@ package de.cimt.talendcomp.jobinstanceservice;
 
 import java.io.IOException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import jakarta.servlet.Filter;
@@ -34,11 +37,13 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public class PrometheusMetricsFilter implements Filter {
 
+	private static Logger log = LogManager.getLogger(PrometheusMetricsFilter.class);
     private Histogram histogram = null;
     private Counter statusCounter = null;
     private int pathComponents = 1;
     boolean stripContextPath = false;
     private String timebucketsStr = "0.001,0.1,1,10,100,1000";
+    public static final String path = "/*";
 
 	@Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -60,6 +65,7 @@ public class PrometheusMetricsFilter implements Filter {
         statusCounter = Counter.build("request_status_total", "HTTP status codes of requests")
                 .labelNames("path", "method", "status")
                 .register();
+        log.info("PrometheusMetricsFilter initialized at path: " + path);
     }
 
     @Override
