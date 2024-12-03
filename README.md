@@ -6,6 +6,8 @@ The main goals are:
 * Minimize the number of database connections by using a database connection pool (if usable)
 * Allow also other implementations (like Python based programs) using the job instance framework
 
+This application requires Java 17+
+
 ## Service API Description
 
 ### Ping

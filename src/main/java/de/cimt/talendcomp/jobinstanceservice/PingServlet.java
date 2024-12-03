@@ -18,7 +18,7 @@ package de.cimt.talendcomp.jobinstanceservice;
 import java.io.IOException;
 import java.io.Writer;
 
-import org.eclipse.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.ee10.servlet.DefaultServlet;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
