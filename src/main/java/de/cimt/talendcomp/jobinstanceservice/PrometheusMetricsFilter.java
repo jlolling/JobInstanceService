@@ -69,15 +69,8 @@ public class PrometheusMetricsFilter implements Filter {
             return;
         }
         HttpServletRequest httpRequest = (HttpServletRequest) servletRequest;
-        String requestUri = httpRequest.getRequestURI();
-        boolean measureIt = false; 
-        if (requestUri != null) {
-        	measureIt = requestUri.contains("/tableinput") || requestUri.contains("/sap-ping");
-        }
-        MetricData data = null;
-    	if (measureIt) {
-    		data = startTimer(httpRequest);
-    	}
+        // String requestUri = httpRequest.getRequestURI();
+        MetricData data = startTimer(httpRequest);
         try {
             filterChain.doFilter(servletRequest, servletResponse);
         } finally {
