@@ -37,7 +37,7 @@ payload:
 	"parent_job_guid":null,
 	"root_job_guid:"AzDvy",
 	"task_name":"my_task_name",
-	"started":"2024-12-10 08:34:12.567"
+	"started":"2024-12-10 08:34:12.567",
 	"work_item":"my-work-item",
 	"host_name":"localhost",
 	"host_pid":1234567,
@@ -67,7 +67,7 @@ payload:
 ```
 {
 	"job_instance_id":12345,
-	"job_ended_at":"20204-12-10 08:44:00.123"
+	"job_ended_at":"20204-12-10 08:44:00.123",
 	"job_result":"my job result",
 	"return_code":0,
 	"return_message":null,
@@ -130,7 +130,7 @@ response: http-code: 200
 	"parent_job_guid":null,
 	"root_job_guid:"AzDvy",
 	"task_name":"my_task_name",
-	"started":"2024-12-10 08:34:12.567"
+	"started":"2024-12-10 08:34:12.567",
 	"work_item":"my-work-item",
 	"host_name":"localhost",
 	"host_pid":1234567,
