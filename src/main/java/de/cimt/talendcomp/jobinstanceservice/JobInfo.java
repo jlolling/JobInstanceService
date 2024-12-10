@@ -18,8 +18,6 @@ package de.cimt.talendcomp.jobinstanceservice;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 public class JobInfo {
 	
@@ -51,7 +49,6 @@ public class JobInfo {
 	private String hostUser;
 	private int returnCode;
 	private String returnMessage;
-	private Map<String, Integer> metrics = new HashMap<String, Integer>();
 	
 	public long getJobInstanceId() {
 		return jobInstanceId;
@@ -472,14 +469,6 @@ public class JobInfo {
 		}
 	}
 
-	public void addMetric(String key, Integer counter) {
-		if (counter != null) {
-			metrics.put(key, counter);
-		} else {
-			metrics.remove(key);
-		}
-	}
-	
 	public void addCountInput(Number in) {
 		if (in != null) {
 			countInput = countInput + in.intValue();

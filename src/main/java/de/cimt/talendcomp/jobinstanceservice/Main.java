@@ -76,7 +76,6 @@ public class Main {
 		log.info("Add servlet: PrometheusMetricServlet at path: " + PrometheusMetricServlet.path);
 		// Add JobInstanceServlet here
 
-		server.setStopAtShutdown(true);
 		// Start the webserver.
 		log.info("Start server");
 		server.start();
