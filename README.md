@@ -57,6 +57,10 @@ http-code=200
 ```
 
 ### Update job instance status entry
+PUT /job_instance_status
+
+payload:
+
 ```
 {
 	"job_instance_id":12345,
@@ -76,3 +80,6 @@ http-code=200
 	"value_range_end":null
 }
 ```
+
+response:
+http-status: 201
