@@ -113,7 +113,7 @@ Array with job_instance_id
 [12345,5678]
 ```
 
-### Get a prticular job instance status
+### Get a particular job instance status
 GET /job_instance_status/12345
 
 response: http-code: 200
