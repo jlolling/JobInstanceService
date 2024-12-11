@@ -19,7 +19,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
 
-public class JobInfo {
+public class JobInstanceStatus {
 	
 	private long jobInstanceId = 0l;
 	private long processInstanceId = 0;

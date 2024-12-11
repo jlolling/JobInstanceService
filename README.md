@@ -97,14 +97,14 @@ URL-Parameters:
 * job_name: the name of the job
 * task_name: the name of the task
 * work_item: null if not relevant, otherwise only jobs with the same work_item will be returned
-* have_input: true/false to filter jobs which have input count > 0
-* have_output: true/false to filter jobs which have output/update/delete count > 0
+* with_input: true/false to filter jobs which has input count > 0
+* with_output: true/false to filter jobs which has output/update/delete count > 0
 * is_successful: only successful jobs
 * is_failed: only failed jobs
 * is_running: only running jobs
 * return_code: only jobs with a specific return-code
 * before_instance_id: job before with older/smaller job instance ids
-* for_root_job_instance_id: the root of this job
+* root_job_instance_id: the root of this job
 
 response: http-status: 200
 Array with job_instance_id

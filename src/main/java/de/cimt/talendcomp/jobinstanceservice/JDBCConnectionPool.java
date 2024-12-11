@@ -20,6 +20,8 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
@@ -29,22 +31,23 @@ public class JDBCConnectionPool {
 
 	private static Logger log = LogManager.getLogger(JDBCConnectionPool.class);
 	protected String user;
-	protected String pass;
+	protected String password;
 	protected String connectionUrl = null;
+	protected String defaultCatalog = null;
 	protected boolean testOnBorrow = true;
 	//private boolean testWhileIdle = true;
 	protected Integer timeIdleConnectionIsChecked = 30000;
 	protected Integer timeBetweenChecks = 60000;
 	protected Integer initialSize = 0;
-	protected Integer maxTotal = -1;
-	protected Integer maxIdle = -1;
+	protected Integer maxCountConnectionsTotal = -1;
+	protected Integer maxCountConnectionsIdle = -1;
 	protected Integer maxWaitForConnection = 0;
 	protected Integer numConnectionsPerCheck = 5;
-	protected String driver = null;
+	protected String driverClassName = null;
 	private Collection<String> initSQL;
 	private BasicDataSource dataSource = null;
 	protected String validationQuery = null;
-	protected String connectionPropertiesStr = null;
+	protected String connectionProperties = null;
 	private boolean autoCommit = false;
 	private String jndiName = null;
 	private boolean enableJMX = true;
@@ -69,24 +72,66 @@ public class JDBCConnectionPool {
 					"Password can not be null. At least empty String \"\" ");
 		} else {
 			this.user = user;
-			this.pass = password;
+			this.password = password;
 		}
+	}
+	
+	/**
+	 * Initialize the pool by a properties file.
+	 * The properties mainly contains the connection pool properties.
+	 * Please refer https://commons.apache.org/proper/commons-dbcp/configuration.html
+	 * The property defaultCatalog have to set for the database containing the tables
+	 * @param propertiesFile
+	 * @throws Exception
+	 */
+	public JDBCConnectionPool(Properties properties) throws Exception {
+		if (properties == null) {
+			throw new IllegalArgumentException("properties cannot be null");
+		} else if (properties.isEmpty()) {
+			throw new IllegalArgumentException("properties cannot be empty");
+		}
+		this.user = properties.getProperty("username");
+		this.password = TalendContextPasswordUtil.decryptPassword(properties.getProperty("password", ""));
+		this.connectionUrl = properties.getProperty("url");
+		this.driverClassName = properties.getProperty("driverClassName");
+		this.connectionProperties = properties.getProperty("connectionProperties");
+		this.autoCommit = "true".equals(properties.getProperty("defaultAutoCommit"));
+		this.defaultCatalog = properties.getProperty("defaultCatalog");
+		this.testOnBorrow = "true".equals(properties.getProperty(properties.getProperty("testOnBorrow")));
+		this.validationQuery = properties.getProperty("validationQuery");
+		this.initialSize = Integer.parseInt(properties.getProperty("initialSize", "0"));
+		this.maxCountConnectionsTotal = Integer.parseInt(properties.getProperty("maxTotal", "8"));
+		this.maxCountConnectionsIdle = Integer.parseInt(properties.getProperty("maxIdle", "8"));
+		this.maxWaitForConnection = Integer.parseInt(properties.getProperty("maxWaitMillis", "-1"));
+		this.numConnectionsPerCheck = Integer.parseInt(properties.getProperty("numTestsPerEvictionRun", "3"));
+		String sqls = properties.getProperty("connectionInitSqls");
+		String[] array = sqls.split(";");
+		for (String sql : array) {
+			if (sql != null && sql.isBlank() == false) {
+				if (this.initSQL == null) {
+					this.initSQL = new ArrayList<String>();
+				}
+				this.initSQL.add(sql);
+			}
+		}
+		this.timeIdleConnectionIsChecked = Integer.parseInt(properties.getProperty("minEvictableIdleTimeMillis"));
+		this.timeBetweenChecks = Integer.parseInt(properties.getProperty("timeBetweenEvictionRunsMillis"));
 	}
 
 	/**
 	 * load given driver
-	 * @param driver
+	 * @param driverClassName
 	 * @throws SQLException
 	 */
-	public void loadDriver(String driver) throws Exception {
-		if (driver == null || driver.trim().isEmpty()) {
+	public void loadDriver(String driverClassName) throws Exception {
+		if (driverClassName == null || driverClassName.trim().isEmpty()) {
 			throw new IllegalArgumentException("driver can not be null or empty");
 		}
 		try {
-			Class.forName(driver.trim());
-			this.driver = driver;
+			Class.forName(driverClassName.trim());
+			this.driverClassName = driverClassName;
 		} catch (ClassNotFoundException e) {
-			throw new Exception("Could not load driver class: " + driver, e);
+			throw new Exception("Could not load driver class: " + driverClassName, e);
 		}
 	}
 	
@@ -96,24 +141,28 @@ public class JDBCConnectionPool {
 	 * @throws Exception, UniversalConnectionPoolException
 	 */
 	public void initializePool() throws Exception {
-		if (this.driver == null) {
+		if (this.driverClassName == null) {
 			throw new IllegalStateException("Please call method loadDriver before setup datasource");
 		}
 		if (this.connectionUrl == null) {
-			throw new IllegalStateException("Please use method setConnectionString before setup datasource");
+			throw new IllegalStateException("Please use method setConnectionString before initializePool()");
+		}
+		if (user == null || user.isBlank()) {
+			throw new IllegalArgumentException("User can not be null ior empty");
 		}
 		// use org.apache.commons.dbcp2.BasicDataSource
 		this.dataSource = new BasicDataSource();
 		this.dataSource.setUsername(this.user);
-		this.dataSource.setPassword(this.pass);
+		this.dataSource.setPassword(this.password);
 		this.dataSource.setUrl(this.connectionUrl);
 		this.dataSource.setTestOnBorrow(this.testOnBorrow);
 		this.dataSource.setTestWhileIdle(true);
 		this.dataSource.setMinEvictableIdle(Duration.ofSeconds(this.timeIdleConnectionIsChecked));
 		this.dataSource.setDurationBetweenEvictionRuns(Duration.ofSeconds(this.timeBetweenChecks));
 		this.dataSource.setInitialSize(this.initialSize);
-		this.dataSource.setMaxTotal(this.maxTotal);
-		this.dataSource.setMaxIdle(this.maxIdle);
+		this.dataSource.setMaxTotal(this.maxCountConnectionsTotal);
+		this.dataSource.setMaxIdle(this.maxCountConnectionsIdle);
+		this.dataSource.setDefaultCatalog(this.defaultCatalog);
 		if (enableJMX) {
 			this.dataSource.setJmxName(buildJmxName());
 		}
@@ -131,8 +180,8 @@ public class JDBCConnectionPool {
 		this.dataSource.setLifo(false);
 		this.dataSource.setLogAbandoned(false);
 		this.dataSource.setLogExpiredConnections(false);
-		if (connectionPropertiesStr != null) {
-			this.dataSource.setConnectionProperties(connectionPropertiesStr);
+		if (connectionProperties != null) {
+			this.dataSource.setConnectionProperties(connectionProperties);
 		}
 		// create our first connection to detect connection problems right here
 		try {
@@ -151,7 +200,7 @@ public class JDBCConnectionPool {
 	}
 	
 	/**
-	 * Borrows a connection from the pool. To give it back close the connection
+	 * Borrows a connection from the pool. To give it back simply close the connection
 	 * @return connection
 	 * @throws SQLException
 	 */
@@ -178,9 +227,9 @@ public class JDBCConnectionPool {
 	 */
 	public void setAdditionalProperties(String propertiesStr) throws SQLException {
 		if (propertiesStr != null && propertiesStr.trim().isEmpty() == false) {
-			this.connectionPropertiesStr = prepareConnectionProperties(propertiesStr.trim());
+			this.connectionProperties = prepareConnectionProperties(propertiesStr.trim());
 		} else {
-			this.connectionPropertiesStr = null;
+			this.connectionProperties = null;
 		}
 	}
 	
@@ -262,11 +311,11 @@ public class JDBCConnectionPool {
 	}
 
 	public Integer getMaxTotal() {
-		return maxTotal;
+		return maxCountConnectionsTotal;
 	}
 
 	public Integer getMaxIdle() {
-		return maxIdle;
+		return maxCountConnectionsIdle;
 	}
 
 	/**
@@ -280,8 +329,8 @@ public class JDBCConnectionPool {
 		if (maxTotal == null) {
 			throw new IllegalArgumentException("maxTotal can not be null");
 		} else {
-			this.maxTotal = maxTotal;
-			this.maxIdle = maxTotal; // max idle should be the same value as max total
+			this.maxCountConnectionsTotal = maxTotal;
+			this.maxCountConnectionsIdle = maxTotal; // max idle should be the same value as max total
 		}
 
 	}

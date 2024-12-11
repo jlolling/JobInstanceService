@@ -25,14 +25,14 @@ public interface JobInstanceStorage {
 	 * @return job_instance_id
 	 * @throws Exception
 	 */
-	public long createEntry(JobInfo jobInfo) throws Exception;
+	public long createEntry(JobInstanceStatus jobInfo) throws Exception;
 	
 	/**
 	 * Update the job instance entry with metric and result info
 	 * @param jobInfo
 	 * @throws Exception
 	 */
-	public void updateEntry(JobInfo jobInfo) throws Exception;
+	public void updateEntry(JobInstanceStatus jobInfo) throws Exception;
 	
 	/**
 	 * Returns the job_instance_id for a job
@@ -43,18 +43,43 @@ public interface JobInstanceStorage {
 	public long getJobInstanceIdByJobGuid(String guid) throws Exception;
 	
 	/**
-	 * Returns the job run info for the previous run if the job
-	 * @param jobInfo info about the current job
-	 * @param successful - current job must be successful
-	 * @param withInput - current job must have input
-	 * @param withOutput - current job must have output
-	 * @param sameRoot - current job must inside the same root job
-	 * @param forWorkItem
-	 * @return job-info for the previous run filtered by the criteria above
+	 * Select job instance ids by various criteria.
+	 * null values in the parameters means this criteria is not used for selection
+	 * @param jobName
+	 * @param taskName
+	 * @param workItem
+	 * @param withInput
+	 * @param withOutput
+	 * @param successful
+	 * @param failed
+	 * @param running
+	 * @param returnCode
+	 * @param beforeJobInstanceId
+	 * @param rootJobInstanceId
+	 * @return List of job instance ids
 	 * @throws Exception
 	 */
-	public JobInfo retrievePreviousInstanceData(JobInfo jobInfo, boolean successful, boolean withInput, boolean withOutput, boolean sameRoot, boolean forWorkItem) throws Exception;
+	public List<Long> select(
+			String jobName,
+			String taskName,
+			String workItem,
+			Boolean withInput, 
+			Boolean withOutput, 
+			Boolean successful, 
+			Boolean failed,
+			Boolean running,
+			Integer returnCode,
+			Long beforeJobInstanceId, 
+			Long rootJobInstanceId) throws Exception;
 
+	/**
+	 * Returns a particular job instance status
+	 * @param jobInstanceId
+	 * @return JobInstanceStatus object for the given ID
+	 * @throws Exception
+	 */
+	public JobInstanceStatus getJobInstanceStatus(long jobInstanceId) throws Exception;
+	
 	/**
 	 * Write job detail counters
 	 * @param listCounters

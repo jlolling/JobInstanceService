@@ -65,15 +65,15 @@ public class Main {
 		server.setHandler(context);
 		PrometheusMetricsFilter pm = new PrometheusMetricsFilter();
 		pm.setTimebucketsStr(buckets);
+		log.info("Add filter: PrometheusMetricsFilter at pattern: " + PrometheusMetricsFilter.path);
 		context.addFilter(new FilterHolder(pm), PrometheusMetricsFilter.path, null);
-		log.info("Add filter: PrometheusMetricsFilter at pattern: /*");
-		context.addServlet(new ServletHolder(new ShutdownServlet()), ShutdownServlet.path);
 		log.info("Add servlet: ShutdownServlet at path: " + ShutdownServlet.path);
-		context.addServlet(new ServletHolder(new PingServlet()), PingServlet.path);
+		context.addServlet(new ServletHolder(new ShutdownServlet()), ShutdownServlet.path);
 		log.info("Add servlet: PingServlet at path: " + PingServlet.path);
+		context.addServlet(new ServletHolder(new PingServlet()), PingServlet.path);
+		log.info("Add servlet: PrometheusMetricServlet at path: " + PrometheusMetricServlet.path);
 		context.addServlet(new ServletHolder(new PrometheusMetricServlet()), PrometheusMetricServlet.path);
 		DefaultExports.initialize();
-		log.info("Add servlet: PrometheusMetricServlet at path: " + PrometheusMetricServlet.path);
 		// Add JobInstanceServlet here
 
 		// Start the webserver.
