@@ -152,3 +152,17 @@ response: http-code: 200
 }
 ```
 
+### Send detail counter for a particular job run
+POST /job_instance_counter/12345
+
+payload:
+
+```
+{
+	"name":"my-counter-name",
+	"type":"input|output|update|delete|reject",
+	"value":99
+}
+```
+
+response: http-status: 204
