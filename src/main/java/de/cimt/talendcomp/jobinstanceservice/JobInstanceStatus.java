@@ -19,6 +19,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class JobInstanceStatus {
 	
 	private long jobInstanceId = 0l;
@@ -49,6 +52,58 @@ public class JobInstanceStatus {
 	private String hostUser;
 	private int returnCode;
 	private String returnMessage;
+	
+	@JsonCreator
+	public JobInstanceStatus(
+			@JsonProperty(value = "taskName", required = true) String taskName,
+			@JsonProperty(value = "jobName", required = true) String jobName,
+			@JsonProperty(value = "jobGuid", required = true) String jobGuid,
+			@JsonProperty(value = "parentJobGuid", required = true) String parentJobGuid,
+			@JsonProperty(value = "rootJobGuid", required = true) String rootJobGuid,
+			@JsonProperty(value = "jobInfo") String jobInfo,
+			@JsonProperty(value = "externalJobId") String externalJobId,
+			@JsonProperty(value = "workItem") String workItem,
+			@JsonProperty(value = "startDate", required = true) Date startDate,
+			@JsonProperty(value = "hostName", required = true) String hostName,
+			@JsonProperty(value = "hostUser", required = true) String hostUser,
+			@JsonProperty(value = "hostPid", required = true) int hostPid,
+			@JsonProperty(value = "timeRangeStart") Date timeRangeStart,
+			@JsonProperty(value = "timeRangeEnd") Date timeRangeEnd,
+			@JsonProperty(value = "valueRangeStart") String valueRangeStart,
+			@JsonProperty(value = "valueRangeEnd") String valueRangeEnd,
+			@JsonProperty(value = "stopDate") Date stopDate,
+			@JsonProperty(value = "countInput") int countInput,
+			@JsonProperty(value = "countOutput") int countOutput,
+			@JsonProperty(value = "countUpdate") int countUpdate,
+			@JsonProperty(value = "countReject") int countReject,
+			@JsonProperty(value = "countDelete") int countDelete,
+			@JsonProperty(value = "returnCode") int returnCode,
+			@JsonProperty(value = "returnMessage") String returnMessage
+			) {
+		this.taskName = taskName;
+		this.name = jobName;
+		this.parentJobGuid = parentJobGuid;
+		this.rootJobGuid = rootJobGuid;
+		this.jobInfo = jobInfo;
+		this.extJobId = externalJobId;
+		this.workItem = workItem;
+		this.startDate = startDate;
+		this.stopDate = stopDate;
+		this.hostName = hostName;
+		this.hostUser = hostUser;
+		this.hostPid = hostPid;
+		this.timeRangeStart = timeRangeStart;
+		this.timeRangeEnd = timeRangeEnd;
+		this.valueRangeStart = valueRangeStart;
+		this.valueRangeEnd = valueRangeEnd;
+		this.countInput = countInput;
+		this.countOutput = countOutput;
+		this.countUpdate = countUpdate;
+		this.countReject = countReject;
+		this.countDelete = countDelete;
+		this.returnCode = returnCode;
+		this.returnMessage = returnMessage;
+	}
 	
 	public long getJobInstanceId() {
 		return jobInstanceId;
