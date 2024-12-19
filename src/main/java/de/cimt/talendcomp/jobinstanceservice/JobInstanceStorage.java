@@ -45,30 +45,32 @@ public interface JobInstanceStorage {
 	/**
 	 * Select job instance ids by various criteria.
 	 * null values in the parameters means this criteria is not used for selection
-	 * @param jobName
+	 * @param excludeJobName
+	 * @param includeJobNames comma separated List of jobs to select
 	 * @param taskName
 	 * @param workItem
 	 * @param withInput
 	 * @param withOutput
-	 * @param successful
-	 * @param failed
+	 * @param successful it set to null=no criteria otherwise true or false
 	 * @param running
 	 * @param returnCode
+	 * @param okReturnCodes - comma separated list of return codes for success
 	 * @param beforeJobInstanceId
 	 * @param rootJobInstanceId
 	 * @return List of job instance ids
 	 * @throws Exception
 	 */
 	public List<Long> select(
-			String jobName,
+			String excludeJobName,
+			String includeJobNames,
 			String taskName,
 			String workItem,
 			Boolean withInput, 
 			Boolean withOutput, 
 			Boolean successful, 
-			Boolean failed,
 			Boolean running,
 			Integer returnCode,
+			String okResultCodes,
 			Long beforeJobInstanceId, 
 			Long rootJobInstanceId) throws Exception;
 

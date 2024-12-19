@@ -42,7 +42,7 @@ public class TestJobDetailCounter {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			mapper.readValue(json, JobDetailCounter.class);
-			assertTrue("mandator but missing field name not complaint", false);
+			assertTrue("mandator but missing field name not detected", false);
 		} catch (Exception e) {
 			System.out.println(e);
 			assertTrue(true);
@@ -56,7 +56,7 @@ public class TestJobDetailCounter {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			mapper.readValue(json, JobDetailCounter.class);
-			assertTrue("null field type not complaint", false);
+			assertTrue("null field type not detected", false);
 		} catch (Exception e) {
 			System.out.println(e);
 			assertTrue(true);
@@ -70,11 +70,21 @@ public class TestJobDetailCounter {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			mapper.readValue(json, JobDetailCounter.class);
-			assertTrue("blank field type not complaint", false);
+			assertTrue("blank field type not detected", false);
 		} catch (Exception e) {
 			System.out.println(e);
 			assertTrue(true);
 		}
+	}
+	
+	@Test
+	public void testObjectToJson() throws Exception {
+		JobDetailCounter c = new JobDetailCounter("counter1", "input", 99);
+		ObjectMapper mapper = new ObjectMapper();
+		String actual = mapper.writeValueAsString(c);
+		System.out.println(actual);
+		String expected = "{\"name\":\"counter1\",\"type\":\"input\",\"value\":99}";
+		assertEquals("Wrong json", expected, actual);
 	}
 
 }

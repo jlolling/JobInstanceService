@@ -99,8 +99,7 @@ URL-Parameters:
 * work_item: null if not relevant, otherwise only jobs with the same work_item will be returned
 * with_input: true/false to filter jobs which has input count > 0
 * with_output: true/false to filter jobs which has output/update/delete count > 0
-* is_successful: only successful jobs
-* is_failed: only failed jobs
+* is_successful: only successful jobs it true, if not set not filter, if false only failed jobs
 * is_running: only running jobs
 * return_code: only jobs with a specific return-code
 * before_instance_id: job before with older/smaller job instance ids
