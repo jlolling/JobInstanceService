@@ -85,8 +85,9 @@ public interface JobInstanceStorage {
 	/**
 	 * Write job detail counters
 	 * @param listCounters
+	 * @param jobInstanceId
 	 * @throws Exception
 	 */
-	public void writeCounters(List<JobDetailCounter> listCounters) throws Exception;
+	public void writeCounters(List<JobDetailCounter> listCounters, long jobInstanceId) throws Exception;
 	
 }

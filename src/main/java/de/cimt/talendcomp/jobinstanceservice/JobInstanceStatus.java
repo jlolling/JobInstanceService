@@ -105,6 +105,11 @@ public class JobInstanceStatus {
 		this.returnMessage = returnMessage;
 	}
 	
+	/**
+	 * constructor used for the OR mapper
+	 */
+	protected JobInstanceStatus() {}
+
 	public long getJobInstanceId() {
 		return jobInstanceId;
 	}
