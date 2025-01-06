@@ -12,6 +12,7 @@ public class JobInstanceServlet extends DefaultServlet {
 
 	private static final long serialVersionUID = 1L;
 	private JobInstanceStorage storage = null;
+	public static final String path = "/job-instance";
 
 	@Override
 	public void init() throws ServletException {

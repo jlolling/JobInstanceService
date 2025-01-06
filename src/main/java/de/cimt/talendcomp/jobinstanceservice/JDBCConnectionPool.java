@@ -123,13 +123,12 @@ public class JDBCConnectionPool {
 	 * @param driverClassName
 	 * @throws SQLException
 	 */
-	public void loadDriver(String driverClassName) throws Exception {
+	private void loadDriver() throws Exception {
 		if (driverClassName == null || driverClassName.trim().isEmpty()) {
 			throw new IllegalArgumentException("driver can not be null or empty");
 		}
 		try {
 			Class.forName(driverClassName.trim());
-			this.driverClassName = driverClassName;
 		} catch (ClassNotFoundException e) {
 			throw new Exception("Could not load driver class: " + driverClassName, e);
 		}
@@ -144,6 +143,7 @@ public class JDBCConnectionPool {
 		if (this.driverClassName == null) {
 			throw new IllegalStateException("Please call method loadDriver before setup datasource");
 		}
+		loadDriver();
 		if (this.connectionUrl == null) {
 			throw new IllegalStateException("Please use method setConnectionString before initializePool()");
 		}

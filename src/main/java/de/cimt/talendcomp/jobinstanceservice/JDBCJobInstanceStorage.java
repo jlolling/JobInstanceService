@@ -52,13 +52,13 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 	public static final String JOB_HOST_NAME = "HOST_NAME";
 	public static final String JOB_HOST_PID = "HOST_PID";
 	public static final String JOB_HOST_USER = "HOST_USER";
-	private String tableName = TABLE_JOB_INSTANCE_STATUS;
+	private String statusTableName = TABLE_JOB_INSTANCE_STATUS;
 	private String schemaName = null;
 	public static final String COUNTER_TABLE = "JOB_INSTANCE_COUNTERS";
 	private static final String COUNTER_NAME = "COUNTER_NAME";
 	private static final String COUNTER_TYPE = "COUNTER_TYPE";
 	private static final String COUNTER_VALUE = "COUNTER_VALUE";
-	private String countertableName = COUNTER_TABLE;
+	private String counterTableName = COUNTER_TABLE;
 	private String sequenceExpression = null;
 	private boolean autoIncrementColumn = true;
 	private boolean useGeneratedJID = false;
@@ -83,6 +83,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		}
 		// setup connection pool
 		connectionPool = new JDBCConnectionPool(properties);
+		connectionPool.initializePool();
 	}
 	
 	public Connection getConnection() throws Exception {
@@ -104,7 +105,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		}
 		StringBuilder sb = new StringBuilder();
 		sb.append("insert into ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" (");
 		if (autoIncrementColumn == false || useGeneratedJID) {
 			sb.append(JOB_INSTANCE_ID); // 1
@@ -259,7 +260,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 	public void updateEntry(JobInstanceStatus jobInfo) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		sb.append("update ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" set ");
 		sb.append(JOB_ENDED_AT); // 1
 		sb.append("=?,");
@@ -345,7 +346,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		sb.append("select ");
 		sb.append(JOB_INSTANCE_ID);
 		sb.append(" from ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" where ");
 		sb.append(JOB_GUID);
 		sb.append("=? order by ");
@@ -387,7 +388,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		sb.append("select ");
 		sb.append(JOB_INSTANCE_ID);
 		sb.append(" from ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" where 1=1");
 		if (excludeJobName != null) {
 			sb.append(" and ");
@@ -559,7 +560,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		if (listCounters.isEmpty() == false) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("insert into ");
-			sb.append(countertableName);
+			sb.append(getCounterTable());
 			sb.append(" (");
 			sb.append(JOB_INSTANCE_ID);
 			sb.append(",");
@@ -606,7 +607,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		JobInstanceStatus jis = null;
 		StringBuilder sb = new StringBuilder();
 		sb.append("select * from ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" where ");
 		sb.append(JOB_INSTANCE_ID);
 		sb.append(" = ? ");
@@ -656,6 +657,32 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 
 	public void setMaxMessageLength(int messageMaxLength) {
 		this.messageMaxLength = messageMaxLength;
+	}
+	
+	private String getStatusTable() {
+		return schemaName != null ? schemaName + "." + statusTableName : statusTableName;
+	}
+
+	private String getCounterTable() {
+		return schemaName != null ? schemaName + "." + counterTableName : counterTableName;
+	}
+
+	public void close() {
+		if (connectionPool != null) {
+			try {
+				connectionPool.closePool();
+			} catch (Exception e) {
+				log.error("Close pool failed: " + e.getMessage(), e);
+			}
+		}
+	}
+
+	public void setSchemaName(String schemaName) {
+		if (schemaName != null && schemaName.isBlank() == false) {
+			this.schemaName = schemaName;
+		} else {
+			this.schemaName = null;
+		}
 	}
 
 }
