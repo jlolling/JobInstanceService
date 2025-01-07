@@ -24,7 +24,7 @@ response: Prometheus formatted metrics of the JVM and the service calls
 status-code: 200
 
 ### Create job instance status entry
-POST /job_instance_status
+POST /job_instance
 
 payload:
 
@@ -60,7 +60,7 @@ http-code=201
 ```
 
 ### Update job instance status entry
-PUT /job_instance_status
+PUT /job_instance
 
 payload:
 
@@ -80,7 +80,19 @@ payload:
 	"time_range_start":null,
 	"time_range_end":null,
 	"value_range_start":null,
-	"value_range_end":null
+	"value_range_end":null,
+	"named-counter": [
+		{
+			"name":"counter1",
+			"type":"input",
+			"value":99
+		},
+		{
+			"name":"counter2",
+			"type":"output",
+			"value":99
+		}	
+	]
 }
 ```
 
@@ -91,7 +103,7 @@ No response body
 ### Get the job instance ids of previous jobs
 This returns the job_instance_ids based on filters.
 
-GET /job_instance_status
+GET /job_instance
 
 URL-Parameters:
 * job_name: the name of the job
@@ -113,7 +125,7 @@ Array with job_instance_id
 ```
 
 ### Get a particular job instance status
-GET /job_instance_status/12345
+GET /job_instance/12345
 
 response: http-code: 200
 
@@ -148,20 +160,17 @@ response: http-code: 200
 	"time_range_end":null,
 	"value_range_start":null,
 	"value_range_end":null
+	"named-counter": [
+		{
+			"name":"counter1",
+			"type":"input",
+			"value":99
+		},
+		{
+			"name":"counter2",
+			"type":"output",
+			"value":99
+		}	
+	]
 }
 ```
-
-### Send detail counter for a particular job run
-POST /job_instance_counter/12345
-
-payload:
-
-```
-{
-	"name":"my-counter-name",
-	"type":"input|output|update|delete|reject",
-	"value":99
-}
-```
-
-response: http-status: 204
