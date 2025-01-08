@@ -63,7 +63,7 @@ http-code=201
 PUT /job_instance
 
 payload:
-
+Only the job_instance_id is required, all other fields will be updated if the attributes are exists.
 ```
 {
 	"job_instance_id":12345,
