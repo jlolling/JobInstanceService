@@ -76,6 +76,9 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 	 */
 	public void initialize(String propertiesFile) throws Exception {
 		File f = new File(propertiesFile);
+		if (f.exists() == false) {
+			throw new Exception("Properties file: " + f.getAbsolutePath() + " does not exist!");
+		}
 		try {
 			properties.load(new FileReader(f, Charset.forName("UTF-8")));
 		} catch (Exception e) {
@@ -258,6 +261,15 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 
 	@Override
 	public void updateEntry(JobInstanceStatus jobInfo) throws Exception {
+		if (jobInfo.getJobInstanceId() == 0l) {
+			throw new Exception("Attribute job_instance_id is missing but mandatory for update");
+		}
+		if (jobInfo.getStopDate() == null) {
+			throw new Exception("Attribute stop_date is missing but mandatory for update");
+		}
+		if (jobInfo.getReturnCode() == null) {
+			throw new Exception("Attribute return_code is missing but mandatory for update");
+		}
 		StringBuilder sb = new StringBuilder();
 		sb.append("update ");
 		sb.append(getStatusTable());
@@ -334,6 +346,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 				throw new Exception("Update of job_instance_status id=" + jobInfo.getJobInstanceId() + " failed because no entry was updated!");
 			}
 			psUpdate.close();
+			writeCounters(jobInfo.getCounters(), jobInfo.getJobInstanceId());
 		}
 	}
 
@@ -353,7 +366,6 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		sb.append(JOB_STARTED_AT);
 		sb.append(" desc");
 		String sql = sb.toString();
-		log.debug(sql);
 		long id = 0;
 		try (Connection conn = getConnection()) {
 			PreparedStatement psSelect = conn.prepareStatement(sql);
@@ -369,9 +381,8 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		}
 		return id;
 	}
-
-	@Override
-	public List<Long> select(
+	
+	private String buildWhereCondition(
 			String excludeJobName,
 			String includeJobNames,
 			String taskName,
@@ -381,14 +392,10 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 			Boolean successful, 
 			Boolean running,
 			Integer returnCode,
-			String okResultCodes,
-			Long beforeJobInstanceId, 
-			Long rootJobInstanceId) throws Exception {
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("select ");
-		sb.append(JOB_INSTANCE_ID);
-		sb.append(" from ");
-		sb.append(getStatusTable());
 		sb.append(" where 1=1");
 		if (excludeJobName != null) {
 			sb.append(" and ");
@@ -462,8 +469,14 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		if (beforeJobInstanceId != null) {
 			sb.append(" and ");
 			sb.append(JOB_INSTANCE_ID);
-			sb.append(" > ");
+			sb.append(" < ");
 			sb.append(beforeJobInstanceId);
+		} 
+		if (afterJobInstanceId != null) {
+			sb.append(" and ");
+			sb.append(JOB_INSTANCE_ID);
+			sb.append(" > ");
+			sb.append(afterJobInstanceId);
 		} 
 		if (rootJobInstanceId != null) {
 			sb.append(" and ");
@@ -490,33 +503,99 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 			sb.append(" and ");
 			sb.append(JOB_RETURN_CODE);
 			if (successful) {
-				if (okResultCodes != null) {
-					sb.append(" in (");
-					sb.append(okResultCodes);
-					sb.append(") ");
-				} else {
-					sb.append(" = 0 ");
-				}
+				sb.append(" = 0 ");
 			} else {
-				if (okResultCodes != null) {
-					sb.append(" not in (");
-					sb.append(okResultCodes);
-					sb.append(") ");
-				} else {
-					sb.append(" > 0 ");
-				}
+				sb.append(" > 0 ");
 			}
 		}
 		sb.append(" order by ");
 		sb.append(JOB_STARTED_AT);
+		return sb.toString();
+	}
+
+	@Override
+	public List<Long> selectIds(
+			String excludeJobName,
+			String includeJobNames,
+			String taskName,
+			String workItem,
+			Boolean withInput, 
+			Boolean withOutput, 
+			Boolean successful, 
+			Boolean running,
+			Integer returnCode,
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		sb.append("select ");
+		sb.append(JOB_INSTANCE_ID);
+		sb.append(" from ");
+		sb.append(getStatusTable());
+		sb.append(buildWhereCondition(
+				excludeJobName,
+				includeJobNames,
+				taskName,
+				workItem,
+				withInput, 
+				withOutput, 
+				successful, 
+				running,
+				returnCode,
+				beforeJobInstanceId,
+				afterJobInstanceId,
+				rootJobInstanceId));
 		String sql = sb.toString();
-		log.debug(sql);
 		List<Long> result = new ArrayList<Long>();
 		try (Connection conn = getConnection()) {
 			PreparedStatement psSelect = conn.prepareStatement(sql);
 			ResultSet rs = psSelect.executeQuery();
 			while (rs.next()) {
 				result.add(rs.getLong(1));
+			}
+			rs.close();
+			psSelect.close();
+		}
+		return result;
+	}
+
+	@Override
+	public List<JobInstanceStatus> selectObjects(
+			String excludeJobName,
+			String includeJobNames,
+			String taskName,
+			String workItem,
+			Boolean withInput, 
+			Boolean withOutput, 
+			Boolean successful, 
+			Boolean running,
+			Integer returnCode,
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		sb.append("select * from ");
+		sb.append(getStatusTable());
+		sb.append(buildWhereCondition(
+				excludeJobName,
+				includeJobNames,
+				taskName,
+				workItem,
+				withInput, 
+				withOutput, 
+				successful, 
+				running,
+				returnCode,
+				beforeJobInstanceId,
+				afterJobInstanceId,
+				rootJobInstanceId));
+		String sql = sb.toString();
+		List<JobInstanceStatus> result = new ArrayList<>();
+		try (Connection conn = getConnection()) {
+			PreparedStatement psSelect = conn.prepareStatement(sql);
+			ResultSet rs = psSelect.executeQuery();
+			while (rs.next()) {
+				result.add(getJobInstanceStatusFromResultSet(rs));
 			}
 			rs.close();
 			psSelect.close();
@@ -667,6 +746,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		return schemaName != null ? schemaName + "." + counterTableName : counterTableName;
 	}
 
+	@Override
 	public void close() {
 		if (connectionPool != null) {
 			try {
@@ -684,5 +764,5 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 			this.schemaName = null;
 		}
 	}
-
+	
 }

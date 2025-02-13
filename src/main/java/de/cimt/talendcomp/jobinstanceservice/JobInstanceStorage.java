@@ -54,13 +54,12 @@ public interface JobInstanceStorage {
 	 * @param successful it set to null=no criteria otherwise true or false
 	 * @param running
 	 * @param returnCode
-	 * @param okReturnCodes - comma separated list of return codes for success
 	 * @param beforeJobInstanceId
 	 * @param rootJobInstanceId
-	 * @return List of job instance ids
+	 * @return List of job instance status ids
 	 * @throws Exception
 	 */
-	public List<Long> select(
+	public List<Long> selectIds(
 			String excludeJobName,
 			String includeJobNames,
 			String taskName,
@@ -70,8 +69,39 @@ public interface JobInstanceStorage {
 			Boolean successful, 
 			Boolean running,
 			Integer returnCode,
-			String okResultCodes,
 			Long beforeJobInstanceId, 
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) throws Exception;
+
+	/**
+	 * Select job instance ids by various criteria.
+	 * null values in the parameters means this criteria is not used for selection
+	 * @param excludeJobName
+	 * @param includeJobNames comma separated List of jobs to select
+	 * @param taskName
+	 * @param workItem
+	 * @param withInput
+	 * @param withOutput
+	 * @param successful it set to null=no criteria otherwise true or false
+	 * @param running
+	 * @param returnCode
+	 * @param beforeJobInstanceId
+	 * @param rootJobInstanceId
+	 * @return List of job instance status objects
+	 * @throws Exception
+	 */
+	public List<JobInstanceStatus> selectObjects(
+			String excludeJobName,
+			String includeJobNames,
+			String taskName,
+			String workItem,
+			Boolean withInput, 
+			Boolean withOutput, 
+			Boolean successful, 
+			Boolean running,
+			Integer returnCode,
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
 			Long rootJobInstanceId) throws Exception;
 
 	/**
@@ -89,5 +119,22 @@ public interface JobInstanceStorage {
 	 * @throws Exception
 	 */
 	public void writeCounters(List<JobDetailCounter> listCounters, long jobInstanceId) throws Exception;
+	
+	public static Long extractJobInstanceIdFromPath(String uri) {
+		if (uri == null || uri.isBlank()) {
+			throw new IllegalArgumentException("uri cannot be null or empty!");
+		}
+		String idStr = RegexUtil.extractByRegexGroup(uri, "/([0-9]{1,})$", 1);
+		Long jobInstanceId = null;
+		if (idStr != null && idStr.isBlank() == false) {
+			jobInstanceId = Long.parseLong(idStr);
+		}
+		return jobInstanceId;
+	}
+	
+	/**
+	 * Close the resources from the storage
+	 */
+	public void close();
 	
 }

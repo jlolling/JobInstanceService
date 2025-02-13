@@ -49,7 +49,8 @@ payload:
 }
 ```
 response: 
-http-code=201
+http-code=200
+Response:
 
 ```
 {
@@ -102,23 +103,26 @@ No response body
 
 ### Get the job instance ids of previous jobs
 This returns the job_instance_ids based on filters.
+Unused filter parameters can be omitted.
 
 GET /job_instance
 
 URL-Parameters:
-* job_name: the name of the job
-* task_name: the name of the task
+* exclude_job: name of the job have to exclude
+* include_jobs: comma separated list of names of the job have to include
+* include_tasks: list of the tasks to include
 * work_item: null if not relevant, otherwise only jobs with the same work_item will be returned
 * with_input: true/false to filter jobs which has input count > 0
 * with_output: true/false to filter jobs which has output/update/delete count > 0
-* is_successful: only successful jobs it true, if not set not filter, if false only failed jobs
+* is_successful: only successful jobs it true, if false only failed jobs
 * is_running: only running jobs
 * return_code: only jobs with a specific return-code
-* before_instance_id: job before with older/smaller job instance ids
+* before_instance_id: job before with older/smaller job instance id
+* after_instance_id: job younger than job with this job instance id
 * root_job_instance_id: the root of this job
-
+* return_objects: returns full JobInstanceStatus objects instead only the ids
 response: http-status: 200
-Array with job_instance_id
+Array with job_instance_id or JobInstanceStatus objects
 
 ```
 [12345,5678]
