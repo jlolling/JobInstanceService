@@ -178,3 +178,26 @@ response: http-code: 200
 	]
 }
 ```
+
+## Configuration of the database pool
+Its done by a properties file: dbcp.properties
+
+| Property                      | Meaning                                                                                                                                              | Example       |
+|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| url                           | JDBC Url to the database server                                                                                                                      |               |
+| username                      | Login to the database                                                                                                                                |               |
+| password                      | Password for the account                                                                                                                             |               |
+| connectionProperties          | Properties in form of key=value seperated by ;                                                                                                       |               |
+| defaultAutoCommit             | affects new connections                                                                                                                              | true or false |
+| defaultCatalog                | Often means the actual database name                                                                                                                 |               |
+| driverClassName               | Full name of the driver class                                                                                                                        |               |
+| testOnBorrow                  | A connection can be tested right before delivered to the application                                                                                 | true or false |
+| validationQuery               | A simple cheap statement to check if the connection still works                                                                                      |               |
+| initialSize                   | The number of connections created when the pool starts                                                                                               |               |
+| maxTotal                      | The max number of connections exists in parallel (not necessarily connected just now)                                                                |               |
+| maxIdle                       | The max number of not used connections. All over counted will be closed and removed from the pool.                                                   |               |
+| maxWaitMillis                 | How long an application have to wait for a connection. If it takes longer the application get an exception                                           |               |
+| maxTestsPerEvicionRun         | How many connections will be tested in one test run.  Connection can be frequently tested to take care always functioning connections are available. |               |
+| connectionInitSQLs            | Statements separated by ; running for every new connection juist after established                                                                   |               |
+| minEvictableIdleTimesMillis   | How long a connection is idle before it is considered to be removed                                                                                  |               |
+| timeBetweenEvictionRunsMillis | The time between 2 eviction runs (check the connections)                                                                                             |               |
