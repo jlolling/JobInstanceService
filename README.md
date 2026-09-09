@@ -198,6 +198,6 @@ Its done by a properties file: dbcp.properties
 | maxIdle                       | The max number of not used connections. All over counted will be closed and removed from the pool.                                                   |               |
 | maxWaitMillis                 | How long an application have to wait for a connection. If it takes longer the application get an exception                                           |               |
 | maxTestsPerEvicionRun         | How many connections will be tested in one test run.  Connection can be frequently tested to take care always functioning connections are available. |               |
-| connectionInitSQLs            | Statements separated by ; running for every new connection juist after established                                                                   |               |
+| connectionInitSQLs            | Statements separated by ; running for every new connection just after established                                                                    |               |
 | minEvictableIdleTimesMillis   | How long a connection is idle before it is considered to be removed                                                                                  |               |
 | timeBetweenEvictionRunsMillis | The time between 2 eviction runs (check the connections)                                                                                             |               |
