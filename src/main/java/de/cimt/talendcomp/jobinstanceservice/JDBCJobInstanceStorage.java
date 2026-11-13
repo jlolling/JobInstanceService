@@ -52,12 +52,18 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 	public static final String JOB_HOST_NAME = "HOST_NAME";
 	public static final String JOB_HOST_PID = "HOST_PID";
 	public static final String JOB_HOST_USER = "HOST_USER";
-	private String tableName = TABLE_JOB_INSTANCE_STATUS;
+	private String statusTableName = TABLE_JOB_INSTANCE_STATUS;
 	private String schemaName = null;
+	public static final String COUNTER_TABLE = "JOB_INSTANCE_COUNTERS";
+	private static final String COUNTER_NAME = "COUNTER_NAME";
+	private static final String COUNTER_TYPE = "COUNTER_TYPE";
+	private static final String COUNTER_VALUE = "COUNTER_VALUE";
+	private String counterTableName = COUNTER_TABLE;
 	private String sequenceExpression = null;
 	private boolean autoIncrementColumn = true;
 	private boolean useGeneratedJID = false;
 	private static JID jid = new JID();
+	private int messageMaxLength = 1000;
 	
 	/**
 	 * Initialize the storage by a properties file.
@@ -70,6 +76,9 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 	 */
 	public void initialize(String propertiesFile) throws Exception {
 		File f = new File(propertiesFile);
+		if (f.exists() == false) {
+			throw new Exception("Properties file: " + f.getAbsolutePath() + " does not exist!");
+		}
 		try {
 			properties.load(new FileReader(f, Charset.forName("UTF-8")));
 		} catch (Exception e) {
@@ -77,6 +86,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		}
 		// setup connection pool
 		connectionPool = new JDBCConnectionPool(properties);
+		connectionPool.initializePool();
 	}
 	
 	public Connection getConnection() throws Exception {
@@ -98,7 +108,7 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		}
 		StringBuilder sb = new StringBuilder();
 		sb.append("insert into ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" (");
 		if (autoIncrementColumn == false || useGeneratedJID) {
 			sb.append(JOB_INSTANCE_ID); // 1
@@ -251,8 +261,93 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 
 	@Override
 	public void updateEntry(JobInstanceStatus jobInfo) throws Exception {
-		// TODO Auto-generated method stub
-
+		if (jobInfo.getJobInstanceId() == 0l) {
+			throw new Exception("Attribute job_instance_id is missing but mandatory for update");
+		}
+		if (jobInfo.getStopDate() == null) {
+			throw new Exception("Attribute stop_date is missing but mandatory for update");
+		}
+		if (jobInfo.getReturnCode() == null) {
+			throw new Exception("Attribute return_code is missing but mandatory for update");
+		}
+		StringBuilder sb = new StringBuilder();
+		sb.append("update ");
+		sb.append(getStatusTable());
+		sb.append(" set ");
+		sb.append(JOB_ENDED_AT); // 1
+		sb.append("=?,");
+		sb.append(JOB_RESULT_ITEM); // 2
+		sb.append("=?,");
+		sb.append(JOB_TIME_RANGE_START); // 3
+		sb.append("=?,");
+		sb.append(JOB_TIME_RANGE_END); // 4
+		sb.append("=?,");
+		sb.append(JOB_INPUT); // 5
+		sb.append("=?,");
+		sb.append(JOB_OUTPUT); // 6
+		sb.append("=?,");
+		sb.append(JOB_REJECTED); // 7
+		sb.append("=?,");
+		sb.append(JOB_DELETED); // 8
+		sb.append("=?,");
+		sb.append(JOB_RETURN_CODE); // 9
+		sb.append("=?,");
+		sb.append(JOB_RETURN_MESSAGE); // 10
+		sb.append("=?,");
+		sb.append(JOB_VALUE_RANGE_START); // 11
+		sb.append("=?,");
+		sb.append(JOB_VALUE_RANGE_END); // 12
+		sb.append("=?,");
+		sb.append(JOB_UPDATED); // 13
+		sb.append("=? ");
+		sb.append("where ");
+		sb.append(JOB_INSTANCE_ID); // 14
+		sb.append("=?");
+		String sql = sb.toString();
+		try (Connection connection = getConnection()) {
+			PreparedStatement psUpdate = connection.prepareStatement(sql);
+			int paramIndex = 1;
+			psUpdate.setTimestamp(paramIndex++, new Timestamp(System.currentTimeMillis()));
+			if (jobInfo.getJobResult() != null) {
+				psUpdate.setString(paramIndex++, jobInfo.getJobResult());
+			} else {
+				psUpdate.setNull(paramIndex++, Types.VARCHAR);
+			}
+			if (jobInfo.getTimeRangeStart() != null) {
+				psUpdate.setTimestamp(paramIndex++, new Timestamp(jobInfo.getTimeRangeStart().getTime()));
+			} else {
+				psUpdate.setNull(paramIndex++, Types.TIMESTAMP);
+			}
+			if (jobInfo.getTimeRangeEnd() != null) {
+				psUpdate.setTimestamp(paramIndex++, new Timestamp(jobInfo.getTimeRangeEnd().getTime()));
+			} else {
+				psUpdate.setNull(paramIndex++, Types.TIMESTAMP);
+			}
+			psUpdate.setInt(paramIndex++, jobInfo.getCountInput());
+			psUpdate.setInt(paramIndex++, jobInfo.getCountOutput());
+			psUpdate.setInt(paramIndex++, jobInfo.getCountReject());
+			psUpdate.setInt(paramIndex++, jobInfo.getCountDelete());
+			psUpdate.setInt(paramIndex++, jobInfo.getReturnCode());
+			psUpdate.setString(paramIndex++, enforceTextLength(jobInfo.getReturnMessage(), messageMaxLength, 1));
+			if (jobInfo.getValueRangeStart() != null) {
+				psUpdate.setString(paramIndex++, jobInfo.getValueRangeStart());
+			} else {
+				psUpdate.setNull(paramIndex++, Types.VARCHAR);
+			}
+			if (jobInfo.getValueRangeEnd() != null) {
+				psUpdate.setString(paramIndex++, jobInfo.getValueRangeEnd());
+			} else {
+				psUpdate.setNull(paramIndex++, Types.VARCHAR);
+			}
+			psUpdate.setInt(paramIndex++, jobInfo.getCountUpdate());
+			psUpdate.setLong(paramIndex++, jobInfo.getJobInstanceId());
+			int count = psUpdate.executeUpdate();
+			if (count != 1) {
+				throw new Exception("Update of job_instance_status id=" + jobInfo.getJobInstanceId() + " failed because no entry was updated!");
+			}
+			psUpdate.close();
+			writeCounters(jobInfo.getCounters(), jobInfo.getJobInstanceId());
+		}
 	}
 
 	@Override
@@ -264,14 +359,13 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		sb.append("select ");
 		sb.append(JOB_INSTANCE_ID);
 		sb.append(" from ");
-		sb.append(tableName);
+		sb.append(getStatusTable());
 		sb.append(" where ");
 		sb.append(JOB_GUID);
 		sb.append("=? order by ");
-		sb.append(JOB_INSTANCE_ID);
+		sb.append(JOB_STARTED_AT);
 		sb.append(" desc");
 		String sql = sb.toString();
-		log.debug(sql);
 		long id = 0;
 		try (Connection conn = getConnection()) {
 			PreparedStatement psSelect = conn.prepareStatement(sql);
@@ -287,9 +381,8 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		}
 		return id;
 	}
-
-	@Override
-	public List<Long> select(
+	
+	private String buildWhereCondition(
 			String excludeJobName,
 			String includeJobNames,
 			String taskName,
@@ -299,14 +392,10 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 			Boolean successful, 
 			Boolean running,
 			Integer returnCode,
-			String okResultCodes,
-			Long beforeJobInstanceId, 
-			Long rootJobInstanceId) throws Exception {
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("select ");
-		sb.append(JOB_INSTANCE_ID);
-		sb.append(" from ");
-		sb.append(tableName);
 		sb.append(" where 1=1");
 		if (excludeJobName != null) {
 			sb.append(" and ");
@@ -380,8 +469,14 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 		if (beforeJobInstanceId != null) {
 			sb.append(" and ");
 			sb.append(JOB_INSTANCE_ID);
-			sb.append(" > ");
+			sb.append(" < ");
 			sb.append(beforeJobInstanceId);
+		} 
+		if (afterJobInstanceId != null) {
+			sb.append(" and ");
+			sb.append(JOB_INSTANCE_ID);
+			sb.append(" > ");
+			sb.append(afterJobInstanceId);
 		} 
 		if (rootJobInstanceId != null) {
 			sb.append(" and ");
@@ -408,27 +503,49 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 			sb.append(" and ");
 			sb.append(JOB_RETURN_CODE);
 			if (successful) {
-				if (okResultCodes != null) {
-					sb.append(" in (");
-					sb.append(okResultCodes);
-					sb.append(") ");
-				} else {
-					sb.append(" = 0 ");
-				}
+				sb.append(" = 0 ");
 			} else {
-				if (okResultCodes != null) {
-					sb.append(" not in (");
-					sb.append(okResultCodes);
-					sb.append(") ");
-				} else {
-					sb.append(" > 0 ");
-				}
+				sb.append(" > 0 ");
 			}
 		}
 		sb.append(" order by ");
+		sb.append(JOB_STARTED_AT);
+		return sb.toString();
+	}
+
+	@Override
+	public List<Long> selectIds(
+			String excludeJobName,
+			String includeJobNames,
+			String taskName,
+			String workItem,
+			Boolean withInput, 
+			Boolean withOutput, 
+			Boolean successful, 
+			Boolean running,
+			Integer returnCode,
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		sb.append("select ");
 		sb.append(JOB_INSTANCE_ID);
+		sb.append(" from ");
+		sb.append(getStatusTable());
+		sb.append(buildWhereCondition(
+				excludeJobName,
+				includeJobNames,
+				taskName,
+				workItem,
+				withInput, 
+				withOutput, 
+				successful, 
+				running,
+				returnCode,
+				beforeJobInstanceId,
+				afterJobInstanceId,
+				rootJobInstanceId));
 		String sql = sb.toString();
-		log.debug(sql);
 		List<Long> result = new ArrayList<Long>();
 		try (Connection conn = getConnection()) {
 			PreparedStatement psSelect = conn.prepareStatement(sql);
@@ -443,15 +560,209 @@ public class JDBCJobInstanceStorage implements JobInstanceStorage {
 	}
 
 	@Override
-	public void writeCounters(List<JobDetailCounter> listCounters) throws Exception {
-		// TODO Auto-generated method stub
+	public List<JobInstanceStatus> selectObjects(
+			String excludeJobName,
+			String includeJobNames,
+			String taskName,
+			String workItem,
+			Boolean withInput, 
+			Boolean withOutput, 
+			Boolean successful, 
+			Boolean running,
+			Integer returnCode,
+			Long beforeJobInstanceId,
+			Long afterJobInstanceId,
+			Long rootJobInstanceId) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		sb.append("select * from ");
+		sb.append(getStatusTable());
+		sb.append(buildWhereCondition(
+				excludeJobName,
+				includeJobNames,
+				taskName,
+				workItem,
+				withInput, 
+				withOutput, 
+				successful, 
+				running,
+				returnCode,
+				beforeJobInstanceId,
+				afterJobInstanceId,
+				rootJobInstanceId));
+		String sql = sb.toString();
+		List<JobInstanceStatus> result = new ArrayList<>();
+		try (Connection conn = getConnection()) {
+			PreparedStatement psSelect = conn.prepareStatement(sql);
+			ResultSet rs = psSelect.executeQuery();
+			while (rs.next()) {
+				result.add(getJobInstanceStatusFromResultSet(rs));
+			}
+			rs.close();
+			psSelect.close();
+		}
+		return result;
+	}
 
+	private JobInstanceStatus getJobInstanceStatusFromResultSet(ResultSet rs) throws SQLException {
+		JobInstanceStatus ji = new JobInstanceStatus();
+		ji.setJobInstanceId(rs.getLong(JOB_INSTANCE_ID));
+		ji.setName(rs.getString(JOB_NAME));
+		ji.setJobInfo(rs.getString(JOB_INFO));
+		ji.setGuid(rs.getString(JOB_GUID));
+		ji.setStartDate(rs.getTimestamp(JOB_STARTED_AT));
+		ji.setStopDate(rs.getTimestamp(JOB_ENDED_AT));
+		ji.setWorkItem(rs.getString(JOB_WORK_ITEM));
+		ji.setTimeRangeStart(rs.getTimestamp(JOB_TIME_RANGE_START));
+		ji.setTimeRangeEnd(rs.getTimestamp(JOB_TIME_RANGE_END));
+		ji.setValueRangeStart(rs.getString(JOB_VALUE_RANGE_START));
+		ji.setValueRangeEnd(rs.getString(JOB_VALUE_RANGE_END));
+		ji.setProcessInstanceId(rs.getLong(PROCESS_INSTANCE_ID));
+		ji.setTaskName(rs.getString(JOB_DISPLAY_NAME));
+		ji.setProcessInstanceId(rs.getLong(PROCESS_INSTANCE_ID));		
+		ji.setJobResult(rs.getString(JOB_RESULT_ITEM));
+		ji.setCountInput(rs.getInt(JOB_INPUT));
+		ji.setCountOutput(rs.getInt(JOB_OUTPUT));
+		ji.setCountUpdate(rs.getInt(JOB_UPDATED));
+		ji.setCountReject(rs.getInt(JOB_REJECTED));
+		ji.setCountDelete(rs.getInt(JOB_DELETED));
+		ji.setHostName(rs.getString(JOB_HOST_NAME));
+		ji.setHostPid(rs.getInt(JOB_HOST_PID));
+		ji.setReturnCode(rs.getInt(JOB_RETURN_CODE));
+		ji.setReturnMessage(rs.getString(JOB_RETURN_MESSAGE));
+		ji.setExtJobId(rs.getString(JOB_EXT_ID));
+		ji.setProject(rs.getString(JOB_PROJECT));
+		return ji;
+	}
+
+	@Override
+	public void writeCounters(List<JobDetailCounter> listCounters, long jobInstanceId) throws Exception {
+		if (listCounters.isEmpty() == false) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("insert into ");
+			sb.append(getCounterTable());
+			sb.append(" (");
+			sb.append(JOB_INSTANCE_ID);
+			sb.append(",");
+			sb.append(COUNTER_NAME);
+			sb.append(",");
+			sb.append(COUNTER_TYPE);
+			sb.append(",");
+			sb.append(COUNTER_VALUE);
+			sb.append(") values (?,?,?,?)");
+			boolean hasValues = false;
+			try (Connection connection = getConnection()) {
+				PreparedStatement ps = connection.prepareStatement(sb.toString());
+				for (JobDetailCounter entry : listCounters) {
+					Integer value = entry.getValue();
+					if (value != null) {
+						ps.setLong(1, jobInstanceId);
+						ps.setString(2, entry.getName());
+						ps.setString(3, entry.getType());
+						ps.setInt(4, value);
+						ps.addBatch();
+						hasValues = true;
+					}
+				}
+				if (hasValues) {
+					ps.executeBatch();
+					if (connection.getAutoCommit() == false) {
+						connection.commit();
+					}
+					ps.close();
+				}
+			} catch (SQLException sqle) {
+				SQLException ne = sqle.getNextException();
+				if (ne != null) {
+					throw new Exception(sqle.getMessage() + ", Next Exception:" + ne.getMessage(), sqle);
+				} else {
+					throw sqle;
+				}
+			}
+		}
 	}
 
 	@Override
 	public JobInstanceStatus getJobInstanceStatus(long jobInstanceId) throws Exception {
-		// TODO Auto-generated method stub
-		return null;
+		JobInstanceStatus jis = null;
+		StringBuilder sb = new StringBuilder();
+		sb.append("select * from ");
+		sb.append(getStatusTable());
+		sb.append(" where ");
+		sb.append(JOB_INSTANCE_ID);
+		sb.append(" = ? ");
+		String sql = sb.toString();
+		try (Connection conn = getConnection()) {
+			PreparedStatement psSelect = conn.prepareStatement(sql);
+			psSelect.setLong(1, jobInstanceId);
+			ResultSet rs = psSelect.executeQuery();
+			while (rs.next()) {
+				jis = getJobInstanceStatusFromResultSet(rs);
+			}
+			rs.close();
+			psSelect.close();
+		}
+		return jis;
 	}
 
+	/**
+	 * limits the message text to avoid overflow database field
+	 * @param size to limit
+	 * @param cutPosition 0= cuts at end, 1= cuts in the middle, 2=cuts at the start
+	 * @return limited text
+	 */
+	public static String enforceTextLength(String message, int size, int cutPosition) {
+		if (message != null && message.trim().isEmpty() == false) {
+			message = message.trim();
+			if (message.length() > size) {
+				size = size - 3; // to have space for "..."
+				if (cutPosition == 0) {
+					return message.substring(0, size) + "...";
+				} else if (cutPosition == 1) {
+					StringBuilder sb = new StringBuilder();
+					sb.append(message.substring(0, size / 2));
+					sb.append("...");
+					sb.append(message.substring(message.length() - size / 2, message.length()));
+					return sb.toString();
+				} else {
+					return "..." + message.substring(message.length() - size);
+				}
+			} else {
+				return message;
+			}
+		} else {
+			return null;
+		}
+	}
+
+	public void setMaxMessageLength(int messageMaxLength) {
+		this.messageMaxLength = messageMaxLength;
+	}
+	
+	private String getStatusTable() {
+		return schemaName != null ? schemaName + "." + statusTableName : statusTableName;
+	}
+
+	private String getCounterTable() {
+		return schemaName != null ? schemaName + "." + counterTableName : counterTableName;
+	}
+
+	@Override
+	public void close() {
+		if (connectionPool != null) {
+			try {
+				connectionPool.closePool();
+			} catch (Exception e) {
+				log.error("Close pool failed: " + e.getMessage(), e);
+			}
+		}
+	}
+
+	public void setSchemaName(String schemaName) {
+		if (schemaName != null && schemaName.isBlank() == false) {
+			this.schemaName = schemaName;
+		} else {
+			this.schemaName = null;
+		}
+	}
+	
 }

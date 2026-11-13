@@ -1,5 +1,5 @@
 /**
- * Copyright 2024 Jan Lolling jan.lolling@gmail.com
+ * Copyright 2025 Jan Lolling jan.lolling@gmail.com
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,8 +39,7 @@ public class Main {
 	private static Logger log = LogManager.getLogger(Main.class);
 	public static Server server = null;
 	private static int port = 10000;
-	private static boolean verbose = false;
-	private static String propertiesFileDir = null;
+	private static String propertiesFile = null;
 	private static String buckets = null;
 	private static String version = null;
 	public static final String groupId = "de.cimt.talendcomp";
@@ -52,9 +51,6 @@ public class Main {
 	 * @throws Exception
 	 */
 	public static void start() throws Exception {
-		if (port < 1) {
-			throw new IllegalArgumentException("Port must be greater 0");
-		}
 		server = new Server(port);
 		MBeanContainer mbContainer = new MBeanContainer(ManagementFactory.getPlatformMBeanServer());
 		server.addEventListener(mbContainer);
@@ -73,9 +69,12 @@ public class Main {
 		context.addServlet(new ServletHolder(new PingServlet()), PingServlet.path);
 		log.info("Add servlet: PrometheusMetricServlet at path: " + PrometheusMetricServlet.path);
 		context.addServlet(new ServletHolder(new PrometheusMetricServlet()), PrometheusMetricServlet.path);
-		DefaultExports.initialize();
+		DefaultExports.initialize(); // initialize the JVM metrics
 		// Add JobInstanceServlet here
-
+		log.info("Add servlet: JobInstanceServlet at path: " + JobInstanceServlet.path);
+		JobInstanceServlet jis = new JobInstanceServlet();
+		jis.setPropertiesFile(propertiesFile);
+		context.addServlet(new ServletHolder(jis), JobInstanceServlet.path);
 		// Start the webserver.
 		log.info("Start server");
 		server.start();
@@ -98,14 +97,13 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		Options options = new Options();
 		options.addOption("b", "buckets", true, "Buckets for measure and count the request durations");
-		options.addOption("f", "propertiesFile", false, "Properties file for connection settings");
+		options.addOption("f", "propertiesFile", true, "Properties file for connection settings (Apache DBCP format)");
 		options.addOption("h", "help", false, "Print help to console, do nothing else.");
 		options.addOption("p", "port", true, "Port of the server");
 		options.addOption("v", "verbose", false, "Print statements to console");
 		CommandLineParser parser = new DefaultParser();
 		CommandLine cmd = parser.parse(options, args);
 		String portStr = cmd.getOptionValue('p', String.valueOf(port));
-		verbose = cmd.hasOption('v');
 		boolean help = cmd.hasOption('h');
 		version = readVersionNumber();
 		if (help) {
@@ -118,6 +116,9 @@ public class Main {
 		checkLog4jConfigFile();
 		try {
 			port = Integer.valueOf(portStr);
+			if (port < 1) {
+				throw new Exception("Port must be greater 0");
+			}
 		} catch (Exception e) {
 			log.error("Cannot parse port number: " + portStr);
 			HelpFormatter formatter = new HelpFormatter();
@@ -126,9 +127,9 @@ public class Main {
 			        options);
 			System.exit(4);
 		}
-		propertiesFileDir = cmd.getOptionValue('f');
+		propertiesFile = cmd.getOptionValue('f', "dbcp.properties");
 		buckets = cmd.getOptionValue('b');
-		log.info("Configuring Job Instance Service (version " + version + ") at port: " + port);
+		log.info("Start setup Job Instance Service (version " + version + ") at port: " + port);
 		start();
 	}
 

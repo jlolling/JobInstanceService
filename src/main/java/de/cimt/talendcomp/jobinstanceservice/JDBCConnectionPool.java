@@ -20,7 +20,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Properties;
 
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -86,9 +85,9 @@ public class JDBCConnectionPool {
 	 */
 	public JDBCConnectionPool(Properties properties) throws Exception {
 		if (properties == null) {
-			throw new IllegalArgumentException("properties cannot be null");
+			throw new Exception("properties cannot be null");
 		} else if (properties.isEmpty()) {
-			throw new IllegalArgumentException("properties cannot be empty");
+			throw new Exception("properties cannot be empty");
 		}
 		this.user = properties.getProperty("username");
 		this.password = TalendContextPasswordUtil.decryptPassword(properties.getProperty("password", ""));
@@ -123,13 +122,12 @@ public class JDBCConnectionPool {
 	 * @param driverClassName
 	 * @throws SQLException
 	 */
-	public void loadDriver(String driverClassName) throws Exception {
+	private void loadDriver() throws Exception {
 		if (driverClassName == null || driverClassName.trim().isEmpty()) {
 			throw new IllegalArgumentException("driver can not be null or empty");
 		}
 		try {
 			Class.forName(driverClassName.trim());
-			this.driverClassName = driverClassName;
 		} catch (ClassNotFoundException e) {
 			throw new Exception("Could not load driver class: " + driverClassName, e);
 		}
@@ -144,6 +142,7 @@ public class JDBCConnectionPool {
 		if (this.driverClassName == null) {
 			throw new IllegalStateException("Please call method loadDriver before setup datasource");
 		}
+		loadDriver();
 		if (this.connectionUrl == null) {
 			throw new IllegalStateException("Please use method setConnectionString before initializePool()");
 		}
@@ -259,7 +258,7 @@ public class JDBCConnectionPool {
 	/**
 	 * time an connection can be in idle state before it is checked <br>
 	 * required testWhileIdle = true<br>
-	 * default = 60000 Milli Sec (MySql), Oracle 60000 (Sec)
+	 * default = 60000ms
 	 * 
 	 * @param timeIdleConnectionIsChecked
 	 */
